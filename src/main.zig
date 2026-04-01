@@ -5,8 +5,9 @@ const usage =
     \\Usage: gwc <command> [options]
     \\
     \\Commands:
-    \\  switch <id>       Activate the window with the given ID
-    \\  switch --last     Activate the last focused window
+    \\  switch <id>          Activate the window with the given ID
+    \\  switch --last        Activate the last focused window
+    \\  switch --index <n>   Activate window by index (0 = current, 1 = previous, ...)
     \\
 ;
 
@@ -49,6 +50,21 @@ fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
 
         const win = window_list.lastFocused() orelse
             fatal("There are no open windows to switch to.\n", .{});
+
+        manager.activate(win.id) catch
+            fatal("Failed to activate window {d}.\n", .{win.id});
+    } else if (std.mem.eql(u8, args[0], "--index")) {
+        if (args.len < 2) fatal("Missing value for --index.\n{s}", .{usage});
+
+        const index = std.fmt.parseInt(u32, args[1], 10) catch
+            fatal("Invalid index: {s}\n{s}", .{ args[1], usage });
+
+        const window_list = manager.list(allocator) catch
+            fatal("Failed to list windows.\n", .{});
+        defer window_list.deinit();
+
+        const win = window_list.getByIndex(index) orelse
+            fatal("No window at index {d}.\n", .{index});
 
         manager.activate(win.id) catch
             fatal("Failed to activate window {d}.\n", .{win.id});

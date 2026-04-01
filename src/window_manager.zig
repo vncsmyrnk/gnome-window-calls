@@ -49,6 +49,15 @@ pub const WindowList = struct {
         return null;
     }
 
+    /// Get a window by reverse index (0 = current, 1 = previous, etc.).
+    pub fn getByIndex(self: WindowList, index: u32) ?Window {
+        const ws = self.windows();
+        if (ws.len == 0) return null;
+        const ri = ws.len - 1 - @min(index, ws.len - 1);
+        if (index >= ws.len) return null;
+        return ws[ri];
+    }
+
     pub fn deinit(self: WindowList) void {
         self.parsed.deinit();
     }
