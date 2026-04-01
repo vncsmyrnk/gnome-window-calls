@@ -27,6 +27,8 @@ pub const Error = error{
 
 pub const WindowList = struct {
     parsed: std.json.Parsed([]Window),
+    json_buf: []const u8,
+    allocator: std.mem.Allocator,
 
     pub fn windows(self: WindowList) []Window {
         return self.parsed.value;
@@ -60,6 +62,7 @@ pub const WindowList = struct {
 
     pub fn deinit(self: WindowList) void {
         self.parsed.deinit();
+        self.allocator.free(self.json_buf);
     }
 };
 
@@ -79,7 +82,6 @@ pub const WindowManager = struct {
     pub fn list(self: WindowManager, allocator: std.mem.Allocator) Error!WindowList {
         const json_slice = self.conn.callNoArgsReturnString(allocator, dest, path, iface, "List") catch
             return Error.ListFailed;
-        defer allocator.free(json_slice);
 
         const parsed = std.json.parseFromSlice(
             []Window,
@@ -88,7 +90,7 @@ pub const WindowManager = struct {
             .{ .ignore_unknown_fields = true },
         ) catch return Error.JsonParseFailed;
 
-        return .{ .parsed = parsed };
+        return .{ .parsed = parsed, .json_buf = json_slice, .allocator = allocator };
     }
 
     /// Activate (focus) a window by its ID.

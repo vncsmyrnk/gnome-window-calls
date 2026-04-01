@@ -8,6 +8,7 @@ const usage =
     \\  switch <id>          Activate the window with the given ID
     \\  switch --last        Activate the last focused window
     \\  switch --index <n>   Activate window by index (0 = current, 1 = previous, ...)
+    \\  list                 List open windows in reverse order (index 0 first)
     \\
 ;
 
@@ -31,6 +32,8 @@ pub fn main() void {
 
     if (std.mem.eql(u8, args[1], "switch")) {
         runSwitch(allocator, args[2..]);
+    } else if (std.mem.eql(u8, args[1], "list")) {
+        runList(allocator);
     } else {
         fatal("{s}", .{usage});
     }
@@ -74,5 +77,29 @@ fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
 
         manager.activate(id) catch
             fatal("Failed to activate window {d}.\n", .{id});
+    }
+}
+
+fn runList(allocator: std.mem.Allocator) void {
+    const manager = wm.WindowManager.init() catch
+        fatal("Failed to connect to D-Bus session bus.\n", .{});
+    defer manager.deinit();
+
+    const window_list = manager.list(allocator) catch
+        fatal("Failed to list windows.\n", .{});
+    defer window_list.deinit();
+
+    const ws = window_list.windows();
+    if (ws.len == 0) {
+        fatal("There are no open windows.\n", .{});
+    }
+
+    const stdout = std.fs.File.stdout();
+    var i: u32 = 0;
+    while (i < ws.len) : (i += 1) {
+        const w = ws[ws.len - 1 - i];
+        var buf: [4096]u8 = undefined;
+        const line = std.fmt.bufPrint(&buf, "{s}\n", .{w.title}) catch continue;
+        _ = stdout.write(line) catch {};
     }
 }
