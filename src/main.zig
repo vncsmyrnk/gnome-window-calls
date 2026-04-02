@@ -7,6 +7,7 @@ const usage =
     \\Commands:
     \\  switch <id>                        Activate the window with the given ID
     \\  switch --last                      Activate the last focused window
+    \\  switch --least-recent              Activate the least recently focused window
     \\  switch --index <n>                 Activate window by index (0 = current, 1 = previous, ...)
     \\  list                               List open windows in reverse order (index 0 first)
     \\
@@ -47,15 +48,13 @@ pub fn main() void {
 fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
     if (args.len == 0) fatal("{s}", .{usage});
 
-    // Pre-scan args for --exclude so it can appear in any position relative
-    // to --last / --index.
     var exclude_pattern: ?[]const u8 = null;
     var i: usize = 0;
     while (i < args.len) : (i += 1) {
         if (std.mem.eql(u8, args[i], "--exclude")) {
             if (i + 1 >= args.len) fatal("Missing value for --exclude.\n{s}", .{usage});
             exclude_pattern = args[i + 1];
-            i += 1; // skip the value on the next iteration
+            i += 1;
         }
     }
 
@@ -72,6 +71,18 @@ fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
         defer window_list.deinit();
 
         const win = window_list.lastFocused() orelse
+            fatal("There are no open windows to switch to.\n", .{});
+        manager.activate(win.id) catch
+            fatal("Failed to activate window {d}.\n", .{win.id});
+    } else if (std.mem.eql(u8, args[0], "--least-recent")) {
+        const window_list = if (exclude_pattern) |pattern|
+            (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
+                fatal("Failed to apply exclude filter.\n", .{})
+        else
+            manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
+        defer window_list.deinit();
+
+        const win = window_list.firstFocused() orelse
             fatal("There are no open windows to switch to.\n", .{});
         manager.activate(win.id) catch
             fatal("Failed to activate window {d}.\n", .{win.id});
