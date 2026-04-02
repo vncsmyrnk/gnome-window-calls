@@ -31,7 +31,7 @@ This project aims to provide useful, predefined and optimized use cases for this
 Install it with your favorite AUR helper.
 
 ```sh
-yay -S gnome-window-calls
+yay -S gnome-window-calls-git
 ```
 
 ### From source
