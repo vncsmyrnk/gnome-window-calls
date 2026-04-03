@@ -54,12 +54,12 @@ pub const WindowList = struct {
 
     pub fn lastApplicationFocused(self: WindowList) ?Window {
         const ws = self.windows();
-        var i = ws.len - 2;
+        var i = ws.len - 1; // Ignores the current window
         while (i > 0) { // Excludes windows from the same application
-            if (!std.mem.eql(u8, ws[i].wm_class, ws[ws.len - 1].wm_class)) {
-                return ws[i];
-            }
             i -= 1;
+            if (!std.mem.eql(u8, ws[i].wm_class, ws[ws.len - 1].wm_class)) {
+                return ws[i]; // Excludes windows from the same application
+            }
         }
         return null;
     }
