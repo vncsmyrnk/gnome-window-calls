@@ -11,7 +11,7 @@ const usage =
     \\  switch --last-instance             Activate the last instance of the focused window
     \\  switch --least-recent              Activate the least recently focused window
     \\  switch --index <n>                 Activate window by index (0 = current, 1 = previous, ...)
-    \\  list   windows                     List open windows in reverse order (index 0 first). Format: `{wm_class} | {title}`
+    \\  list   windows                     List open windows in reverse order (index 0 being the current focused window). Format: `{wm_class} | {title}`
     \\  list   applications [--rofi]       List installed applications
     \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open (Example: `raise org.gnome.Calculator.desktop`)
     \\
@@ -164,9 +164,9 @@ fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
             fatal("Failed to list windows.\n", .{});
         defer window_list.deinit();
 
-        const ws = window_list.windows();
+        const ws = window_list.switchableWindows();
         if (ws.len == 0) {
-            fatal("There are no open windows.\n", .{});
+            fatal("There are no other windows opened.\n", .{});
         }
 
         var stdout_buf: [4096]u8 = undefined;
@@ -185,7 +185,7 @@ fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
                 wm_class_lower;
 
             if (rofi) {
-                stdout.print("{d}\x00display\x1f{s} | {s}\x1fmeta\x1f{s} | {s}\n", .{ w.id, wm_class_str, w.title, wm_class_lower, w.title }) catch {};
+                stdout.print("{d}\x00display\x1f{s} | {s}\x1fmeta\x1f{s}\n", .{ w.id, wm_class_str, w.title, w.title }) catch {};
             } else {
                 stdout.print("{s} | {s}\n", .{ wm_class_str, w.title }) catch {};
             }

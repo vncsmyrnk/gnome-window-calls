@@ -41,11 +41,15 @@ pub const WindowList = struct {
     parsed: std.json.Parsed([]Window),
     json_buf: []const u8,
     allocator: std.mem.Allocator,
-    /// Non-null only when the list was narrowed by `filtered()`.
-    filter_buf: ?[]const Window = null,
+    filtered_buf: ?[]const Window = null,
 
     pub fn windows(self: WindowList) []const Window {
-        return if (self.filter_buf) |buf| buf else self.parsed.value;
+        return if (self.filtered_buf) |buf| buf else self.parsed.value;
+    }
+
+    /// Get all windows but the current focused one
+    pub fn switchableWindows(self: WindowList) []const Window {
+        return if (self.filtered_buf) |buf| buf[0 .. buf.len - 1] else self.parsed.value[0 .. self.parsed.value.len - 1];
     }
 
     pub fn lastFocused(self: WindowList) ?Window {
@@ -93,12 +97,12 @@ pub const WindowList = struct {
             .parsed = self.parsed,
             .json_buf = self.json_buf,
             .allocator = self.allocator,
-            .filter_buf = buf.toOwnedSlice(self.allocator) catch return Error.FilterFailed,
+            .filtered_buf = buf.toOwnedSlice(self.allocator) catch return Error.FilterFailed,
         };
     }
 
     pub fn deinit(self: WindowList) void {
-        if (self.filter_buf) |buf| self.allocator.free(buf);
+        if (self.filtered_buf) |buf| self.allocator.free(buf);
         self.parsed.deinit();
         self.allocator.free(self.json_buf);
     }
