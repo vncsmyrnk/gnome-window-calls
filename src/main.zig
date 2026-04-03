@@ -8,6 +8,7 @@ const usage =
     \\Commands:
     \\  switch <win_id>                    Activate the window with the given window ID
     \\  switch --last                      Activate the last focused window
+    \\  switch --last-instance             Activate the last instance of the focused window
     \\  switch --least-recent              Activate the least recently focused window
     \\  switch --index <n>                 Activate window by index (0 = current, 1 = previous, ...)
     \\  list   windows                     List open windows in reverse order (index 0 first). Format: `{wm_class} | {title}`
@@ -78,6 +79,33 @@ fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
             fatal("There are no open windows to switch to.\n", .{});
         manager.activate(win.id) catch
             fatal("Failed to activate window {d}.\n", .{win.id});
+    } else if (std.mem.eql(u8, args[0], "--last-instance")) {
+        const window_list = manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
+        defer window_list.deinit();
+
+        const ws = window_list.windows();
+        if (ws.len < 2) {
+            fatal("There are no other windows to switch to.\n", .{});
+        }
+        const current_window = ws[ws.len - 1];
+
+        var target_window: ?wm.Window = null;
+        var j: usize = ws.len - 1;
+        while (j > 0) {
+            j -= 1;
+            const w = ws[j];
+            if (std.mem.eql(u8, w.wm_class, current_window.wm_class)) {
+                target_window = w;
+                break;
+            }
+        }
+
+        if (target_window) |win| {
+            manager.activate(win.id) catch
+                fatal("Failed to activate window {d}.\n", .{win.id});
+        } else {
+            fatal("No other instance of the current application was found.\n", .{});
+        }
     } else if (std.mem.eql(u8, args[0], "--least-recent")) {
         const window_list = if (exclude_pattern) |pattern|
             (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
