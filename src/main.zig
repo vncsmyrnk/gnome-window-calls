@@ -122,6 +122,11 @@ fn runSwitch(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
 fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
     if (args.len == 0) fatal("{s}", .{usage});
 
+    var rofi = false;
+    if (args.len > 1 and std.mem.eql(u8, args[1], "--rofi")) {
+        rofi = true;
+    }
+
     if (std.mem.eql(u8, args[0], "windows")) {
         const manager = wm.WindowManager.init() catch
             fatal("Failed to connect to D-Bus session bus.\n", .{});
@@ -150,15 +155,15 @@ fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
                 wm_class_lower[last_idx + 1 ..]
             else
                 wm_class_lower;
-            stdout.print("{s} | {s}\n", .{ wm_class_str, w.title }) catch {};
+
+            if (rofi) {
+                stdout.print("{d}\x00display\x1f{s} | {s}\x1fmeta\x1f{s} | {s}\n", .{ w.id, wm_class_str, w.title, wm_class_lower, w.title }) catch {};
+            } else {
+                stdout.print("{s} | {s}\n", .{ wm_class_str, w.title }) catch {};
+            }
         }
         stdout.flush() catch {};
     } else if (std.mem.eql(u8, args[0], "applications") or std.mem.eql(u8, args[0], "application")) {
-        var rofi = false;
-        if (args.len > 1 and std.mem.eql(u8, args[1], "--rofi")) {
-            rofi = true;
-        }
-
         var stdout_buf: [4096]u8 = undefined;
         var stdout_wrapper = std.fs.File.stdout().writer(&stdout_buf);
         const stdout = &stdout_wrapper.interface;
