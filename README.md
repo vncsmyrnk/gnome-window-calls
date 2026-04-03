@@ -1,5 +1,6 @@
 ![GNOME](https://img.shields.io/badge/GNOME-black?style=plastic&logo=gnome)
 ![Zig](https://img.shields.io/badge/Zig-F7A41D?style=plastic&logo=zig)
+![AUR Version](https://img.shields.io/aur/version/gwin-git?style=plastic&label=AUR)
 [![CI workflow](https://github.com/vncsmyrnk/gwin/actions/workflows/ci.yml/badge.svg)](https://github.com/vncsmyrnk/gwin/actions/workflows/ci.yml)
 [![contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/vncsmyrnk/shell-utils/issues)
 
@@ -29,12 +30,20 @@ The primary goal is to provide useful, predefined and optimized use cases for sw
 
 ## Install
 
+### AUR
+
+Install it with your favorite AUR helper.
+
+```sh
+yay -S gwin-git
+```
+
 ### From source
 
 ```sh
 git clone git@github.com:vncsmyrnk/gwin.git
 just build
-./zig-out/bin/gwc
+./zig-out/bin/gwin
 ```
 
 ## Roadmap and new features

@@ -1,8 +1,8 @@
 # Maintainer: Vinicius Mayrink <vncsmyrnk@gmail.com>
 pkgname=gwin-git
-pkgver=r9.975f9c1 # This gets auto-updated by the pkgver() function
+pkgver=r21.7b24cbd # This gets auto-updated by the pkgver() function
 pkgrel=1
-pkgdesc="D-Bus client for manipulating windows in GNOME using the window-calls extension."
+pkgdesc="A \"Run or raise\" CLI tool for Wayland GNOME, leveraging the window-calls extension D-Bus interface for opened windows."
 arch=('x86_64')
 url="https://github.com/vncsmyrnk/gwin"
 license=('GPL-3.0')
@@ -25,5 +25,5 @@ build() {
 
 package() {
   cd "${pkgname%-git}"
-  install -Dm755 "zig-out/bin/gwc" "${pkgdir}/usr/bin/gwin"
+  install -Dm755 "zig-out/bin/gwin" "${pkgdir}/usr/bin/gwin"
 }
