@@ -47,6 +47,11 @@ pub const WindowList = struct {
         return if (self.filtered_buf) |buf| buf else self.parsed.value;
     }
 
+    /// Get all the windows opened except for the current one
+    pub fn switchableWindows(self: WindowList) []const Window {
+        return self.parsed.value[0 .. self.parsed.value.len - 1];
+    }
+
     pub fn lastApplicationFocused(self: WindowList) ?Window {
         const ws = self.windows();
         var i = ws.len - 2;
