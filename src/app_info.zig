@@ -69,3 +69,39 @@ pub fn launch(app_id: [:0]const u8) !void {
         return error.LaunchFailed;
     }
 }
+
+pub const AppMetadata = struct {
+    name: []const u8,
+    icon: []const u8,
+};
+
+pub fn getMetadataByWmClass(allocator: std.mem.Allocator, wm_class: []const u8) !AppMetadata {
+    var buf: [256]u8 = undefined;
+
+    const desktop_id = std.fmt.bufPrintZ(&buf, "{s}.desktop", .{wm_class}) catch return error.NameTooLong;
+    if (getMetadata(allocator, desktop_id)) |meta| return meta else |_| {}
+
+    const plain_id = std.fmt.bufPrintZ(&buf, "{s}", .{wm_class}) catch return error.NameTooLong;
+    return getMetadata(allocator, plain_id);
+}
+
+fn getMetadata(allocator: std.mem.Allocator, app_id: [:0]const u8) !AppMetadata {
+    const app_info = c.g_desktop_app_info_new(app_id.ptr);
+    if (app_info == null) return error.AppNotFound;
+    defer c.g_object_unref(app_info);
+
+    var name: []const u8 = "";
+    if (c.g_app_info_get_name(@ptrCast(app_info))) |c_name| {
+        name = try allocator.dupe(u8, std.mem.span(c_name));
+    }
+
+    var icon: []const u8 = "";
+    if (c.g_app_info_get_icon(@ptrCast(app_info))) |c_icon| {
+        if (c.g_icon_to_string(c_icon)) |c_icon_str| {
+            defer c.g_free(c_icon_str);
+            icon = try allocator.dupe(u8, std.mem.span(c_icon_str));
+        }
+    }
+
+    return .{ .name = name, .icon = icon };
+}

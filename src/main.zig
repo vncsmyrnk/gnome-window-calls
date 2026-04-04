@@ -173,6 +173,12 @@ fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
         var stdout_wrapper = std.fs.File.stdout().writer(&stdout_buf);
         const stdout = &stdout_wrapper.interface;
 
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const temp_alloc = arena.allocator();
+
+        var metadata_cache = std.StringHashMap(a.AppMetadata).init(temp_alloc);
+
         var i: u32 = 0;
         while (i < ws.len) : (i += 1) {
             const w = ws[ws.len - 1 - i];
@@ -185,12 +191,24 @@ fn runList(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
                 wm_class_lower;
 
             if (rofi) {
-                stdout.print("{d}\x00display\x1f{s} | {s}\x1fmeta\x1f{s}\n", .{ w.id, wm_class_str, w.title, w.title }) catch {};
+                const meta = metadata_cache.get(w.wm_class) orelse blk: {
+                    const fetched = a.getMetadataByWmClass(temp_alloc, w.wm_class) catch a.AppMetadata{ .name = "", .icon = "" };
+                    metadata_cache.put(w.wm_class, fetched) catch {};
+                    break :blk fetched;
+                };
+
+                const display_name = if (meta.name.len > 0) meta.name else wm_class_str;
+
+                if (meta.icon.len > 0) {
+                    stdout.print("{d}\x00display\x1f{s} > {s}\x1ficon\x1f{s}\x1fmeta\x1f{s}\n", .{ w.id, display_name, w.title, meta.icon, w.title }) catch {};
+                } else {
+                    stdout.print("{d}\x00display\x1f{s} > {s}\x1fmeta\x1f{s}\n", .{ w.id, display_name, w.title, w.title }) catch {};
+                }
             } else {
                 stdout.print("{s} | {s}\n", .{ wm_class_str, w.title }) catch {};
             }
         }
-        stdout.flush() catch {};
+        stdout.flush() catch fatal("failed to flush output\n", .{});
     } else if (std.mem.eql(u8, args[0], "applications") or std.mem.eql(u8, args[0], "application")) {
         var stdout_buf: [4096]u8 = undefined;
         var stdout_wrapper = std.fs.File.stdout().writer(&stdout_buf);
