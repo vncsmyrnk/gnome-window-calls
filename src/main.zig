@@ -271,6 +271,9 @@ fn runRaise(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
 
         if (std.mem.indexOf(u8, wm_class_lower, base_name_lower) != null) {
             found_window = w;
+            if (w.focus) {
+                continue;
+            }
             break;
         }
     }
