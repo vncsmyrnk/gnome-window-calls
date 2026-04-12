@@ -76,7 +76,7 @@ pub const AppList = struct {
     }
 };
 
-pub fn launch(app_id: [:0]const u8) !void {
+pub fn launch(app_id: []const u8) !void {
     const app_info = c.g_desktop_app_info_new(app_id.ptr);
     if (app_info == null) return error.AppNotFound;
     defer c.g_object_unref(app_info);

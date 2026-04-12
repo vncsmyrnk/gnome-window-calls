@@ -11,9 +11,10 @@ const usage =
     \\  switch --last-instance             Activate the last instance of the focused window
     \\  switch --least-recent              Activate the least recently focused window
     \\  switch --index <n>                 Activate window by index (0 = current, 1 = previous, ...)
-    \\  list   windows      [--rofi]       List open windows in reverse order (index 0 being the current focused window). Format: `{wm_class} | {title}`
+    \\  list   windows      [--rofi]       List open windows. Format: `{wm_class} | {title}`
     \\  list   applications [--rofi]       List installed applications
     \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open (Example: `raise org.gnome.Calculator.desktop`)
+    \\                                     It also can resolve a substring for the actual desktop ID (Example: `raise calculator`)
     \\
     \\Options for switch without a specific ID:
     \\  --exclude <pattern>                Skip windows whose wm_class contains any
@@ -247,9 +248,6 @@ fn runRaise(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
         base_name = base_name[0 .. base_name.len - ".desktop".len];
     }
 
-    var base_name_buf: [256]u8 = undefined;
-    const base_name_lower = std.ascii.lowerString(&base_name_buf, base_name);
-
     const manager = wm.WindowManager.init() catch
         fatal("Failed to connect to D-Bus session bus.\n", .{});
     defer manager.deinit();
@@ -266,10 +264,8 @@ fn runRaise(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
         j -= 1;
 
         const w = ws[j];
-        var wm_class_buf: [256]u8 = undefined;
-        const wm_class_lower = std.ascii.lowerString(&wm_class_buf, w.wm_class);
 
-        if (std.mem.indexOf(u8, wm_class_lower, base_name_lower) != null) {
+        if (std.ascii.indexOfIgnoreCase(w.wm_class, base_name) != null) {
             found_window = w;
             if (w.focus) {
                 continue;
@@ -281,9 +277,26 @@ fn runRaise(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
     if (found_window) |w| {
         manager.activate(w.id) catch
             fatal("Failed to activate window {d}.\n", .{w.id});
-    } else {
-        a.launch(app_id) catch |err| {
-            fatal("Failed to launch application '{s}': {any}\n", .{ app_id, err });
-        };
+        return;
     }
+
+    a.launch(app_id) catch |err| {
+        if (err != error.AppNotFound) {
+            fatal("Failed to launch application '{s}': {any}\n", .{ app_id, err });
+        }
+
+        const app_list = a.AppList.init(allocator) catch fatal("Failed to list applications.\n", .{});
+        defer app_list.deinit();
+
+        for (app_list.apps_buf) |app| {
+            if (std.ascii.indexOfIgnoreCase(app.id, app_id) == null) continue;
+
+            a.launch(app.id) catch |substringMatchLauchErr| {
+                fatal("Failed to launch application '{s}': {any}\n", .{ app_id, substringMatchLauchErr });
+            };
+            return;
+        }
+
+        fatal("Failed to launch application '{s}': {any}\n", .{ app_id, err });
+    };
 }
