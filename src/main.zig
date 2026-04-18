@@ -15,6 +15,7 @@ const usage =
     \\  list   applications [--rofi]       List installed applications
     \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open (Example: `raise org.gnome.Calculator.desktop`)
     \\                                     It also can resolve a substring for the actual desktop ID (Example: `raise calculator`)
+    \\  close <win_id>                     Closes the window with the given window ID
     \\
     \\Options for switch without a specific ID:
     \\  --exclude <pattern>                Skip windows whose wm_class contains any
@@ -46,6 +47,8 @@ pub fn main() void {
         runList(allocator, args[2..]);
     } else if (std.mem.eql(u8, args[1], "raise")) {
         runRaise(allocator, args[2..]);
+    } else if (std.mem.eql(u8, args[1], "close")) {
+        runClose(allocator, args[2..]);
     } else {
         fatal("{s}", .{usage});
     }
@@ -299,4 +302,18 @@ fn runRaise(allocator: std.mem.Allocator, args: []const [:0]const u8) void {
 
         fatal("Failed to launch application '{s}': {any}\n", .{ app_id, err });
     };
+}
+
+fn runClose(_: std.mem.Allocator, args: []const [:0]const u8) void {
+    if (args.len == 0) fatal("{s}", .{usage});
+
+    const id = std.fmt.parseInt(u32, args[0], 10) catch
+        fatal("Invalid window ID: {s}\n{s}", .{ args[0], usage });
+
+    const manager = wm.WindowManager.init() catch
+        fatal("Failed to connect to D-Bus session bus.\n", .{});
+
+    defer manager.deinit();
+    manager.close(id) catch
+        fatal("Failed to activate window {d}.\n", .{id});
 }

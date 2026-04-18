@@ -149,4 +149,10 @@ pub const WindowManager = struct {
         self.conn.callU32(dest, path, iface, "Activate", id) catch
             return Error.ActivateFailed;
     }
+
+    /// Closes a window by its ID.
+    pub fn close(self: WindowManager, id: u32) Error!void {
+        self.conn.callU32(dest, path, iface, "Close", id) catch
+            return Error.ActivateFailed;
+    }
 };
