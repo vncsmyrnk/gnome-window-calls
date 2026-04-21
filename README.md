@@ -30,13 +30,13 @@ The primary goal is to provide useful, predefined and optimized use cases for sw
 
 ## Examples
 
-### Switching to opening windows via `rofi`
+### Switching to opening windows using `rofi`
 
 ```sh
-gwin list windows --rofi | rofi -x11 -normal-window -dmenu | xargs -I{} gwin switch {}
+gwin list windows --rofi | rofi -x11 -normal-window -dmenu | xargs -I{} gwin switch --id {}
 ```
 
-### Running or raising applications
+### Running or raising applications using `rofi`
 
 ```sh
 gwin list applications --rofi | rofi -x11 -normal-window -dmenu | xargs -I{} gwin raise {}
