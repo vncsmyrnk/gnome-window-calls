@@ -107,12 +107,21 @@ pub const WindowList = struct {
     }
 
     /// Get a window by reverse index (0 = current, 1 = previous, etc.).
-    pub fn getByIndex(self: WindowList, index: u32) ?Window {
+    pub fn getByIndex(self: WindowList, magicIndex: i8) ?Window {
         const ws = self.windows();
         if (ws.len == 0) return null;
-        const ri = ws.len - 1 - @min(index, ws.len - 1);
-        if (index >= ws.len) return null;
-        return ws[ri];
+        const targetIndex = getWindowIndex(magicIndex, ws.len);
+        return ws[targetIndex];
+    }
+
+    fn getWindowIndex(magicIndex: i8, length: usize) usize {
+        const wsCount: i8 = @intCast(length);
+        var i = magicIndex;
+        if (i < 0) {
+            i = @mod(i, wsCount);
+        }
+        const targetIndex: usize = @intCast(wsCount - 1 - @min(i, wsCount - 1));
+        return targetIndex;
     }
 
     /// Return a new `WindowList` that excludes any window whose `wm_class`

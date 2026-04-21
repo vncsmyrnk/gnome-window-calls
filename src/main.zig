@@ -17,9 +17,7 @@ const usage =
     \\Commands:
     \\  switch --id <win_id>               Activate the window with the given window ID
     \\  switch --index <n>                 Activate window by index (0 = current, 1 = previous, ...)
-    \\  switch --last                      Activate the last application focused window
     \\  switch --last-instance             Activate the last instance of the focused window
-    \\  switch --least-recent              Activate the least recently focused window
     \\  list   windows      [--rofi]       List open windows. Format: `{wm_class} | {title}`
     \\  list   applications [--rofi]       List installed applications
     \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open (Example: `raise org.gnome.Calculator.desktop`)
@@ -91,18 +89,14 @@ fn runSwitch(allocator: Allocator, manager: window.WindowManager, args: []const 
     }
 
     const Flag = enum {
-        @"--last",
         @"--last-instance",
-        @"--least-recent",
         @"--id",
         @"--index",
     };
 
     const flag = meta.stringToEnum(Flag, args[0]) orelse fatal("{s}", .{usage});
     switch (flag) {
-        .@"--last" => runSwitchLast(allocator, manager, exclude_pattern),
         .@"--last-instance" => runSwitchLastInstance(allocator, manager),
-        .@"--least-recent" => runSwitchLeastRecent(allocator, manager, exclude_pattern),
         .@"--id" => {
             if (args.len < 2) fatal("Missing value for --id.\n{s}", .{usage});
 
@@ -114,7 +108,7 @@ fn runSwitch(allocator: Allocator, manager: window.WindowManager, args: []const 
         .@"--index" => {
             if (args.len < 2) fatal("Missing value for --index.\n{s}", .{usage});
 
-            const index = fmt.parseInt(u32, args[1], 10) catch
+            const index = fmt.parseInt(i8, args[1], 10) catch
                 fatal("Invalid index: {s}\n{s}", .{ args[1], usage });
 
             runSwitchByIndex(allocator, manager, index, exclude_pattern);
@@ -219,20 +213,6 @@ fn runSwitchByWindowID(manager: window.WindowManager, id: u32) void {
         fatal("Failed to activate window {d}.\n", .{id});
 }
 
-fn runSwitchLast(allocator: Allocator, manager: window.WindowManager, exclude_pattern: ?[]const u8) void {
-    const window_list = if (exclude_pattern) |pattern|
-        (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
-            fatal("Failed to apply exclude filter.\n", .{})
-    else
-        manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
-    defer window_list.deinit();
-
-    const win = window_list.lastApplicationFocused() orelse
-        fatal("There are no open windows to switch to.\n", .{});
-    manager.activate(win.id) catch
-        fatal("Failed to activate window {d}.\n", .{win.id});
-}
-
 fn runSwitchLastInstance(allocator: Allocator, manager: window.WindowManager) void {
     const window_list = manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
     defer window_list.deinit();
@@ -262,21 +242,7 @@ fn runSwitchLastInstance(allocator: Allocator, manager: window.WindowManager) vo
     }
 }
 
-fn runSwitchLeastRecent(allocator: Allocator, manager: window.WindowManager, exclude_pattern: ?[]const u8) void {
-    const window_list = if (exclude_pattern) |pattern|
-        (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
-            fatal("Failed to apply exclude filter.\n", .{})
-    else
-        manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
-    defer window_list.deinit();
-
-    const win = window_list.firstWindowFocused() orelse
-        fatal("There are no open windows to switch to.\n", .{});
-    manager.activate(win.id) catch
-        fatal("Failed to activate window {d}.\n", .{win.id});
-}
-
-fn runSwitchByIndex(allocator: Allocator, manager: window.WindowManager, index: u32, exclude_pattern: ?[]const u8) void {
+fn runSwitchByIndex(allocator: Allocator, manager: window.WindowManager, index: i8, exclude_pattern: ?[]const u8) void {
     const window_list = if (exclude_pattern) |pattern|
         (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
             fatal("Failed to apply exclude filter.\n", .{})
