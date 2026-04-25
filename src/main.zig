@@ -20,14 +20,16 @@ const usage =
     \\  switch --last-instance             Activate the last instance of the focused window
     \\  list   windows      [--rofi]       List open windows. Format: `{wm_class} | {title}`
     \\  list   applications [--rofi]       List installed applications
-    \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open (Example: `raise org.gnome.Calculator.desktop`)
-    \\                                     It also can resolve a substring for the actual desktop ID (Example: `raise calculator`)
+    \\  raise  <desktop_id>                Raise window for <desktop_id> or launch it if not open.
+    \\                                     It also can resolve a substring for the actual desktop ID
     \\  close <win_id>                     Closes the window with the given window ID
     \\
     \\Options for switch without a specific ID:
     \\  --exclude <pattern>                Skip windows whose wm_class contains any
     \\                                     '|'-delimited token in <pattern>.
     \\                                     Example: --exclude 'ghostty|google-chrome'
+    \\  --exclude-focused-application      Skip other instances from the current focused window,
+    \\                                     supported on `--index` only
 ;
 
 const Command = enum { switchCmd, listCmd, raiseCmd, closeCmd };
@@ -108,10 +110,15 @@ fn runSwitch(allocator: Allocator, manager: window.WindowManager, args: []const 
         .@"--index" => {
             if (args.len < 2) fatal("Missing value for --index.\n{s}", .{usage});
 
+            const exclude_focused_application = if (args.len >= 3)
+                mem.eql(u8, args[2], "--exclude-focused-application")
+            else
+                false;
+
             const index = fmt.parseInt(i8, args[1], 10) catch
                 fatal("Invalid index: {s}\n{s}", .{ args[1], usage });
 
-            runSwitchByIndex(allocator, manager, index, exclude_pattern);
+            runSwitchByIndex(allocator, manager, index, exclude_pattern, exclude_focused_application);
         },
     }
 }
@@ -242,16 +249,17 @@ fn runSwitchLastInstance(allocator: Allocator, manager: window.WindowManager) vo
     }
 }
 
-fn runSwitchByIndex(allocator: Allocator, manager: window.WindowManager, index: i8, exclude_pattern: ?[]const u8) void {
-    const window_list = if (exclude_pattern) |pattern|
-        (manager.list(allocator) catch fatal("Failed to list windows.\n", .{})).filtered(pattern) catch
-            fatal("Failed to apply exclude filter.\n", .{})
-    else
-        manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
+fn runSwitchByIndex(allocator: Allocator, manager: window.WindowManager, index: i8, exclude_pattern: ?[]const u8, exclude_focused_application: bool) void {
+    var window_list = manager.list(allocator) catch fatal("Failed to list windows.\n", .{});
     defer window_list.deinit();
 
-    const win = window_list.getByIndex(index) orelse
-        fatal("No window at index {d}.\n", .{index});
+    const pattern: []const u8 = exclude_pattern orelse "";
+    window_list = (if (exclude_focused_application)
+        window_list.filteredIgnoringFocusedApplication(pattern)
+    else
+        window_list.filtered(pattern)) catch fatal("Failed to filter windows.\n", .{});
+
+    const win = window_list.getByIndex(index) orelse fatal("No window at index {d}.\n", .{index});
     manager.activate(win.id) catch
         fatal("Failed to activate window {d}.\n", .{win.id});
 }

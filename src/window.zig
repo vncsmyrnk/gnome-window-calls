@@ -82,23 +82,6 @@ pub const WindowList = struct {
         return self.parsed.value[0 .. self.parsed.value.len - 1];
     }
 
-    pub fn lastApplicationFocused(self: WindowList) ?Window {
-        const ws = self.windows();
-        var i = ws.len - 1; // Ignores the current window
-        while (i > 0) { // Excludes windows from the same application
-            i -= 1;
-            if (!std.mem.eql(u8, ws[i].wm_class, ws[ws.len - 1].wm_class)) {
-                return ws[i]; // Excludes windows from the same application
-            }
-        }
-        return null;
-    }
-
-    pub fn firstWindowFocused(self: WindowList) ?Window {
-        const ws = self.windows();
-        return if (ws.len > 0) ws[0] else null;
-    }
-
     pub fn findById(self: WindowList, id: u32) ?Window {
         for (self.windows()) |w| {
             if (w.id == id) return w;
@@ -107,21 +90,21 @@ pub const WindowList = struct {
     }
 
     /// Get a window by reverse index (0 = current, 1 = previous, etc.).
-    pub fn getByIndex(self: WindowList, magicIndex: i8) ?Window {
+    pub fn getByIndex(self: WindowList, magic_index: i8) ?Window {
         const ws = self.windows();
         if (ws.len == 0) return null;
-        const targetIndex = getWindowIndex(magicIndex, ws.len);
-        return ws[targetIndex];
+        const target_index = getWindowIndex(magic_index, ws.len);
+        return ws[target_index];
     }
 
-    fn getWindowIndex(magicIndex: i8, length: usize) usize {
-        const wsCount: i8 = @intCast(length);
-        var i = magicIndex;
+    fn getWindowIndex(magic_index: i8, length: usize) usize {
+        const ws_count: i8 = @intCast(length);
+        var i = magic_index;
         if (i < 0) {
-            i = @mod(i, wsCount);
+            i = @mod(i, ws_count);
         }
-        const targetIndex: usize = @intCast(wsCount - 1 - @min(i, wsCount - 1));
-        return targetIndex;
+        const target_index: usize = @intCast(ws_count - 1 - @min(i, ws_count - 1));
+        return target_index;
     }
 
     /// Return a new `WindowList` that excludes any window whose `wm_class`
@@ -129,6 +112,10 @@ pub const WindowList = struct {
     /// Ownership is transferred from `self` into the returned list; the caller
     /// must NOT call `deinit` on `self` afterwards — only on the returned value.
     pub fn filtered(self: WindowList, exclude_pattern: []const u8) Error!WindowList {
+        if (exclude_pattern.len == 0) {
+            return self;
+        }
+
         const ws = self.parsed.value;
         var buf = std.ArrayList(Window).initCapacity(self.allocator, ws.len) catch return Error.FilterFailed;
         errdefer buf.deinit(self.allocator);
@@ -147,6 +134,17 @@ pub const WindowList = struct {
             .allocator = self.allocator,
             .filtered_buf = buf.toOwnedSlice(self.allocator) catch return Error.FilterFailed,
         };
+    }
+
+    pub fn filteredIgnoringFocusedApplication(self: WindowList, exclude_pattern: []const u8) Error!WindowList {
+        const ws = self.parsed.value;
+        if (ws.len == 0) {
+            return self;
+        }
+        const focused_wm_class = ws[ws.len - 1].wm_class;
+        const exclude_pattern_ignored = std.fmt.allocPrint(self.allocator, "{s}|{s}", .{ exclude_pattern, focused_wm_class }) catch return Error.FilterFailed;
+        defer self.allocator.free(exclude_pattern_ignored);
+        return self.filtered(exclude_pattern_ignored);
     }
 
     pub fn deinit(self: WindowList) void {
