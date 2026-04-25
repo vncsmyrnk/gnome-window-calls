@@ -69,6 +69,9 @@ just build
 ./zig-out/bin/gwin
 ```
 
+> [!IMPORTANT]
+> Make sure to have the [window-calls extension](https://github.com/ickyicky/window-calls) installed before running `gwin`. Restart the GNOME session after installing the extension.
+
 ## Roadmap and new features
 
 Check out [issues](https://github.com/vncsmyrnk/gwin/issues) for upcoming changes or bug fixes.
